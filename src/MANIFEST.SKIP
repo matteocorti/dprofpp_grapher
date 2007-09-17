@@ -1,0 +1,10 @@
+\.DS_Store$
+^_build
+^Build$
+^blib
+~$
+\.bak$
+\.sw.$
+\.svn
+^cover_db
+^MANIFEST\.SKIP$

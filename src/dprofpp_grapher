@@ -22,12 +22,6 @@ use GraphViz;
 use IPC::Open3 'open3';
 
 ##############################################################################
-# TO DO
-# * color the edges with the same principle as nodes using the number of calls
-# * see if it is possible to separate the traces (maybe using the ID)
-# * options to specify the desired output
-
-##############################################################################
 # Configuration
 
 Getopt::Long::Configure( 'bundling', 'ignorecase', );
@@ -562,7 +556,8 @@ Matteo Corti <matteo.corti@id.ethz.ch>
 Copyright (c) 2007, ETH Zurich.
 
 This module is free software; you can redistribute it and/or modify it
-under the same terms as Perl itself.
+under the terms of GNU general public license version 3.
+See the LICENSE file for details.
 
 =head1 DISCLAIMER OF WARRANTY
 
