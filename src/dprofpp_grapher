@@ -1,0 +1,591 @@
+#!/usr/bin/env perl
+
+# RCS information (required by Perl::Critic)
+#   $Id: dprofpp_grapher 4177 2007-09-17 06:00:39Z corti $
+#   $Revision: 4177 $
+#   $HeadURL: https://svn.id.ethz.ch/nethz/tools/dprofpp_grapher/dprofpp_grapher $
+#   $Source$
+#   $Date: 2007-09-17 08:00:39 +0200 (Mon, 17 Sep 2007) $
+
+use 5.008;
+use strict;
+use warnings;
+use Carp;
+
+use version; our $VERSION = '0.9.0';
+
+use Data::Dumper;
+use English qw(-no_match_vars);
+use File::Slurp;
+use Getopt::Long;
+use GraphViz;
+use IPC::Open3 'open3';
+
+##############################################################################
+# TO DO
+# * color the edges with the same principle as nodes using the number of calls
+# * see if it is possible to separate the traces (maybe using the ID)
+# * options to specify the desired output
+
+##############################################################################
+# Configuration
+
+Getopt::Long::Configure( 'bundling', 'ignorecase', );
+
+##############################################################################
+# variables
+
+my $PROG_NAME = 'dprofpp_grapher';
+
+# list of subroutines (mapped by id)
+my %subroutines;
+
+# list of graph nodes (mapped by name)
+my %nodes;
+
+# list of graph edges (mapped by name)
+my %edges;
+
+# call stack
+my @call_stack;
+
+# command line arguments and defaults
+my $help;
+my $in_file   = 'tmon.out';
+my $threshold = 5;
+my $verbosity = 0;
+
+##############################################################################
+# Functions
+
+##############################################################################
+# Usage     : verbose("some message string", $optional_verbosity_level);
+# Purpose   : write a message if the verbosity level is high enough
+# Returns   : n/a
+# Arguments : message : message string
+#             level   : options verbosity level
+# Throws    : n/a
+# Comments  : n/a
+# See also  : n/a
+sub verbose {
+
+    # arguments
+    my $message = shift;
+    my $level   = shift;
+
+    if ( !defined $level ) {
+        $level = 0;
+    }
+
+    if ( $level < $verbosity ) {
+        print $message;
+    }
+
+    return;
+
+}
+
+##############################################################################
+# Usage     : usage()
+# Purpose   : prints program's usage information
+# Returns   : n/a
+# Arguments : n/a
+# Throws    : n/a
+# Comments  : n/a
+# See also  : n/a
+sub usage {
+
+    # arguments
+    my $msg = shift;
+
+    if (defined $msg) {
+        print "Error: $msg\n\n";
+    }
+
+    print "$PROG_NAME version $VERSION\n\n";
+
+    print << "EOT";
+Usage: $PROG_NAME [options]
+
+Generates a graphic representation of Perl profile data
+
+Options:
+
+    --in,-i            file input file (if not specified tmon.out is read by default)
+    --help,-h,-?       this help screen
+    --threshold,-t     display only subroutins with a cumumlative time
+                       percentage greater or equal to the specified
+                       threshold
+    --verbose,-v       increase verbosity
+    --version,-V       prints version information
+
+EOT
+  exit;
+}
+
+##############################################################################
+# Usage     : get_color({ value => 0.1, min => 0, max => 1 });
+# Purpose   : return a RGB colour value given a scalar 'value' in the range
+#             [vmin,vmax] In this case each colour component ranges from 0
+#             (no contribution) to 1 (fully saturated), modifications for
+#             other ranges is trivial.The colour is clipped at the end of the
+#             scales if 'value' is outside the range [vmin,vmax]
+# Returns   : a comma separated string with the RGB components of the color
+# Arguments : value : scalar value to conver
+#             min   : minum possible value for 'value'
+#             max   : maximum possible value for 'value'
+# Throws    : n/a
+# Comments  : n/a
+# See also  : http://local.wasp.uwa.edu.au/~pbourke/texture_colour/colourramp/
+sub get_color {
+
+    my ($arg_ref) = @_;
+
+    my $value = $arg_ref->{value};
+    my $v_min = $arg_ref->{min};
+    my $v_max = $arg_ref->{max};
+
+    my $red   = 1.0;
+    my $green = 1.0;
+    my $blue  = 1.0;
+
+    my $diff;
+
+    if ($value < $v_min) {
+        $value = $v_min;
+    }
+
+    if ($value > $v_max) {
+        $value = $v_max;
+    }
+
+    $diff = $v_max - $v_min;
+
+    if      ($value < ($v_min + 0.25 * $diff)) {
+        $red   = 0;
+        $green = 4 * ($value - $v_min) / $diff;
+    }
+    elsif ($value < ($v_min + 0.5 * $diff)) {
+        $red   = 0;
+        $blue  = 1 + 4 * ($v_min + 0.25 * $diff - $value) / $diff;
+    }
+    elsif ($value < ($v_min + 0.75 * $diff)) {
+        $red   = 4 * ($value - $v_min - 0.5 * $diff) / $diff;
+        $blue  = 0;
+    }
+    else {
+        $green = 1 + 4 * ($v_min + 0.75 * $diff - $value) / $diff;
+        $blue  = 0;
+    }
+
+    return $red .q{,} . $green . q{,} . $blue;
+
+}
+
+##############################################################################
+# main
+
+#################
+# process options
+
+my $result = GetOptions(
+    'in|i=s'        => \$in_file,
+    'help|h|?'      => \$help,
+    'threshold|t=f' => \$threshold,
+    'verbose|v+'    => \$verbosity,
+    'version|V'     => sub { print "$PROG_NAME version $VERSION\n"; exit; }
+);
+
+if (!$result || $help) {
+    usage();
+}
+
+###############
+# sanity checks
+
+# file
+if (! -f $in_file) {
+    croak "Erro: Cannot open $in_file: $!\n";
+}
+
+# threshold
+if ($threshold < 0 || $threshold > 100) {
+    croak "Error: The threshold must be between 0 and 100\n";
+}
+
+#######################
+# GraphViz graph object
+
+my $graph = GraphViz->new(
+    directed    => 1,
+    concentrate => 1,
+);
+
+$graph->add_node('START');
+$subroutines{-1}{name} = 'START';
+$nodes{START}{time_percentage} = 100;
+
+#######################################
+# read execution times (we use dprofpp)
+
+# it seems that there is no way to tell dprofpp to print *all*
+# the rountines.
+
+verbose "reading execution times\n";
+
+my $max_routines       = 2**31-1;
+
+my ($writer, $reader, $err);
+
+my @profiler_output;
+my @profiler_errors;
+
+open3($writer, $reader, $err, "dprofpp -I -O $max_routines -q $in_file 2>/dev/null");
+@profiler_output     = <$reader>;  # output
+if (defined $err) {
+    @profiler_errors = <$err>;     # errors
+}
+
+my $profile_is_garbled = 0;
+
+if (grep { /^Exporter::Heavy::heavy_export_ok_tags/xm } @profiler_output) {
+
+    verbose "  profile is garbled: re-trying with -F\n";
+
+    # garbled profile -> try again with -F
+    open3($writer, $reader, $err, "dprofpp -I -F -O $max_routines -q $in_file 2>/dev/null");
+    @profiler_output     = <$reader>;  # output
+    if (defined $err) {
+        @profiler_errors = <$err>;     # errors
+    }
+
+    $profile_is_garbled = 1;
+
+}
+
+if ($profile_is_garbled) {
+    @profiler_output = grep { ! /^Garbled/xm } @profiler_output;
+    @profiler_output = grep { ! /Exporter/xm } @profiler_output;
+}
+
+verbose q{  }.@profiler_output." subroutines processed\n";
+
+verbose "parsing execution statistics\n";
+
+for my $line (@profiler_output) {
+
+    my(
+        undef,
+        $time_percentage,
+        $time,
+        $cumulative_time,
+        $called,
+        $seconds_per_call,
+        $cumulative_seconds_per_call,
+        $name
+    ) = split /\s+/xm, $line;
+
+    if(($time_percentage ne q{}) &&
+       ($time_percentage =~ /[0-9\.]/xm)) {
+
+         # we add the subroutine to the graph only if the cumulative execution
+        # time is above a given threshold
+
+        if ($time_percentage >= $threshold) {
+            $nodes{$name}{time_percentage} = $time_percentage;
+        }
+
+    }
+
+}
+
+# compute the max time
+my $min_time = 100;
+for my $name (keys %nodes) {
+    if ($nodes{$name}{time_percentage} < $min_time) {
+        $min_time = $nodes{$name}{time_percentage};
+    }
+}
+
+verbose "  smallest node: $min_time\n", 1;
+
+my $color_limit = (100 - $min_time) / 3;
+
+for my $name (keys %nodes) {
+
+    my $text_color = 'black';
+
+    if ($nodes{$name}{time_percentage} > $color_limit) {
+        # the background is too dark
+        $text_color = 'white';
+    }
+
+    $graph->add_node(
+        $name,
+        label     => $name . "\n(" . $nodes{$name}{time_percentage} . '%)',
+        fontsize  => 8,
+        style     => 'filled',
+        fontcolor => $text_color,
+        fillcolor => get_color({
+            value => $nodes{$name}{time_percentage}/100,
+            min   => $min_time/100,
+            max   => 1,
+        }),
+    );
+
+}
+
+verbose '  generated '.keys(%nodes)." nodes (threshold: $threshold%)\n";
+
+#######################################################################################
+# Stack processing (call traces)
+
+verbose "parsing call traces\n";
+
+push @call_stack, -1;
+
+# read the file with the call traces
+my @lines = read_file($in_file) ;
+
+# From the DProf documentation
+#
+# The lines starting with @ mark time passed from the previous @
+# line. The lines starting with & introduce new subroutine id and show
+# the package and the subroutine name of this id. Lines starting with +
+# , - and * mark entering and exit of subroutines by ids, and goto
+# &subr .
+#
+# The old-style + - and - -lines are used to mark the overhead related
+# to writing to profiler-output file.
+
+my $counter = 0;
+
+my $header  = 1;
+
+DPROF_FILE:
+for my $line (@lines) {
+
+    if ($header) {
+
+        # skip the first part of the file
+
+        if ($line eq "PART2\n") {
+            $header = 0;
+        }
+
+        next DPROF_FILE;
+
+    }
+
+    chomp $line;
+
+   if ($line =~ /^&\ ([0-9a-f]+)\ ([^\ ]+) ([^\ ]+)/m) {
+
+        # new subroutine definition
+
+        my $id       = $1;
+        my $module   = $2;
+        my $function = $3;
+
+        # we map the ID to a node (each node can represent more than one ID)
+
+        $subroutines{$id}{name} = $module.q{::}.$function;
+
+    } elsif ($line =~ /^\+\ ([0-9a-f]+)/mx) {
+
+        # entering a subroutine
+        push @call_stack, $1;
+
+        if (!defined $subroutines{$call_stack[-1]}) {
+
+            croak "Error: corrupted call stack\n";
+        }
+
+        my $edge_name =
+            $subroutines{$call_stack[-2]}{name}
+                . q{*}
+                    . $subroutines{$call_stack[-1]}{name};
+
+        my $count = $edges{$edge_name};
+        if (defined $count) {
+            $edges{$edge_name}++;
+        } else {
+            $edges{$edge_name} = 1;
+        }
+        $counter++;
+
+    } elsif ($line =~ /^\-\ ([0-9a-f]+)/xm) {
+
+        # returning
+        my $callee = $1;
+        my $f      = pop @call_stack;
+
+        while ($f ne $callee) {
+            $f = pop @call_stack;
+        }
+
+        if (!defined $f) {
+            croak 'Inconsistent stack!';
+        }
+
+    }
+
+}
+
+verbose "  $counter calls analyzed\n";
+
+# process edges
+
+verbose "generating edges\n";
+
+$counter = 0;
+for my $edge (keys %edges) {
+
+     my ($t, $h) = split /\*/xm, $edge;
+
+     if ((defined $nodes{$t}) && (defined $nodes{$h})) {
+         $counter++;
+         $graph->add_edge(
+             $t,
+             $h,
+             label => $edges{$edge}.'x',
+         );
+     }
+
+ }
+
+verbose "  $counter edges generated\n";
+
+print "Generating graph\n";
+
+my $DOTFILE_FH;
+open  $DOTFILE_FH,   '>', 'test.dot' or croak "Error: unable to open test.dot: $OS_ERROR";
+print {$DOTFILE_FH}  $graph->as_debug();
+close $DOTFILE_FH  or croak "Error: unable to close test.dot: $OS_ERROR";
+
+print "Done\n";
+
+1;
+
+__END__
+
+=head1 NAME
+
+dprofpp_grapher A program to display the output of dprofpp in graphical form
+
+=head1 DESCRIPTION
+
+dprofpp_grapher generates colored call graphs to represent the output generated
+by dprofpp (part of the Profiler)
+
+=head1 VERSION
+
+Version 0.9.0
+
+=head1 USAGE
+
+dprofpp_grapher [options]
+
+=head1 REQUIRED ARGUMENTS
+
+none
+
+=head1 OPTIONS
+
+    --in,-i            file input file (if not specified tmon.out is read by default)
+
+    --help,-h,-?       this help screen
+
+    --threshold,-t     display only subroutins with a cumumlative time
+                       percentage greater or equal to the specified
+                       threshold
+
+    --verbose,-v       increase verbosity
+
+    --version,-V       prints version information
+
+=head1 EXAMPLE
+
+./dprofpp_grapher -t 5
+
+=head1 DIAGNOSTICS
+
+You can specify multiple --verbose options to increase the program verbosity
+
+=head1 EXIT STATUS
+
+1 on error, 0 otherwise
+
+=head1 DEPENDENCIES
+
+dprofpp_grapher depends on
+
+=over 4
+
+=item * Carp;
+
+=item * version;
+
+=item * Data::Dumper;
+
+=item * English qw(-no_match_vars);
+
+=item * File::Slurp;
+
+=item * Getopt::Long;
+
+=item * GraphViz;
+
+=item * IPC::Open3 'open3';
+
+=back
+
+=head1 CONFIGURATION
+
+=head1 INCOMPATIBILITIES
+
+None reported.
+
+=head1 BUGS AND LIMITATIONS
+
+No bugs have been reported.
+
+Please report any bugs or feature requests to matteo.corti@id.ethz.ch,
+or through the web interface at https://svn.id.ethz.ch/trac/bd_webhosting/newticket
+
+=head1 AUTHOR
+
+Matteo Corti <matteo.corti@id.ethz.ch>
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (c) 2007, ETH Zurich.
+
+This module is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.
+
+=head1 DISCLAIMER OF WARRANTY
+
+BECAUSE THIS SOFTWARE IS LICENSED FREE OF CHARGE, THERE IS NO WARRANTY
+FOR THE SOFTWARE, TO THE EXTENT PERMITTED BY APPLICABLE LAW. EXCEPT
+WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT HOLDERS AND/OR OTHER
+PARTIES PROVIDE THE SOFTWARE "AS IS" WITHOUT WARRANTY OF ANY KIND,
+EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE
+SOFTWARE IS WITH YOU. SHOULD THE SOFTWARE PROVE DEFECTIVE, YOU ASSUME
+THE COST OF ALL NECESSARY SERVICING, REPAIR, OR CORRECTION.
+
+IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING
+WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MAY MODIFY AND/OR
+REDISTRIBUTE THE SOFTWARE AS PERMITTED BY THE ABOVE LICENCE, BE LIABLE
+TO YOU FOR DAMAGES, INCLUDING ANY GENERAL, SPECIAL, INCIDENTAL, OR
+CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THE
+SOFTWARE (INCLUDING BUT NOT LIMITED TO LOSS OF DATA OR DATA BEING
+RENDERED INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD PARTIES OR A
+FAILURE OF THE SOFTWARE TO OPERATE WITH ANY OTHER SOFTWARE), EVEN IF
+SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH
+DAMAGES.
+
+=head1 ACKNOWLEDGMENTS
+
