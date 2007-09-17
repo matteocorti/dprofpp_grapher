@@ -14,12 +14,14 @@ use Carp;
 
 use version; our $VERSION = '0.9.0';
 
+use Class::Inspector;
 use Data::Dumper;
 use English qw(-no_match_vars);
 use File::Slurp;
 use Getopt::Long;
 use GraphViz;
 use IPC::Open3 'open3';
+use UNIVERSAL qw(can);
 
 ##############################################################################
 # Configuration
@@ -44,8 +46,10 @@ my %edges;
 my @call_stack;
 
 # command line arguments and defaults
+my $format    = 'ps';
 my $help;
 my $in_file   = 'tmon.out';
+my $out_file;
 my $threshold = 5;
 my $verbosity = 0;
 
@@ -105,8 +109,10 @@ Generates a graphic representation of Perl profile data
 
 Options:
 
-    --in,-i            file input file (if not specified tmon.out is read by default)
+    --format,-f        set the output format (see the GraphViz manpage for a list)
+    --in,-i            input file (if not specified tmon.out is read by default)
     --help,-h,-?       this help screen
+    --out,-o           output file (if not specified output is sent to standard output)
     --threshold,-t     display only subroutins with a cumumlative time
                        percentage greater or equal to the specified
                        threshold
@@ -183,8 +189,10 @@ sub get_color {
 # process options
 
 my $result = GetOptions(
+    'format|f=s'    => \$format,
     'in|i=s'        => \$in_file,
     'help|h|?'      => \$help,
+    'out|o=s'       => \$out_file,
     'threshold|t=f' => \$threshold,
     'verbose|v+'    => \$verbosity,
     'version|V'     => sub { print "$PROG_NAME version $VERSION\n"; exit; }
@@ -214,6 +222,11 @@ my $graph = GraphViz->new(
     directed    => 1,
     concentrate => 1,
 );
+
+# check the specified output format
+# Graphviz output format
+
+my $method = "as_$format";
 
 $graph->add_node('START');
 $subroutines{-1}{name} = 'START';
@@ -453,9 +466,21 @@ verbose "  $counter edges generated\n";
 print "Generating graph\n";
 
 my $DOTFILE_FH;
-open  $DOTFILE_FH,   '>', 'test.dot' or croak "Error: unable to open test.dot: $OS_ERROR";
-print {$DOTFILE_FH}  $graph->as_debug();
-close $DOTFILE_FH  or croak "Error: unable to close test.dot: $OS_ERROR";
+
+if (defined $out_file) {
+    open  $DOTFILE_FH, '>', $out_file
+        or croak "Error: unable to open $out_file: $OS_ERROR";
+} else {
+    $DOTFILE_FH = *STDOUT;
+}
+
+# use reflection to call the right method
+print {$DOTFILE_FH}  $graph->$method();
+
+if (defined $out_file) {
+    close $DOTFILE_FH
+        or croak "Error: unable to close test.dot: $OS_ERROR";
+}
 
 print "Done\n";
 
@@ -486,6 +511,8 @@ none
 
 =head1 OPTIONS
 
+    --format,-f        set the output format (see the GraphViz manpage for a list)
+
     --in,-i            file input file (if not specified tmon.out is read by default)
 
     --help,-h,-?       this help screen
@@ -500,7 +527,12 @@ none
 
 =head1 EXAMPLE
 
-./dprofpp_grapher -t 5
+./dprofpp_grapher           \
+  --threshold 5             \
+  --verbose                 \
+  --in        tmon.out      \
+  --out       call_graph.ps \
+  --format    ps
 
 =head1 DIAGNOSTICS
 
@@ -540,6 +572,10 @@ dprofpp_grapher depends on
 
 None reported.
 
+=head1 SEE ALSO
+
+The GraphViz manpage for the list of supported output formatsq
+
 =head1 BUGS AND LIMITATIONS
 
 No bugs have been reported.
@@ -556,7 +592,7 @@ Matteo Corti <matteo.corti@id.ethz.ch>
 Copyright (c) 2007, ETH Zurich.
 
 This module is free software; you can redistribute it and/or modify it
-under the terms of GNU general public license version 3.
+under the terms of GNU general public license (gpl) version 3.
 See the LICENSE file for details.
 
 =head1 DISCLAIMER OF WARRANTY

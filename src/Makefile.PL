@@ -4,22 +4,19 @@ use inc::Module::Install;
 ##############################################################################
 # Define metadata (we read it from the binary)
 
-name              'dprofpp_grapher';
-abstract_from     'dprofpp_grapher';
-author_from       'dprofpp_grapher';
-version_from      'dprofpp_grapher';
-license_from      'dprofpp_grapher';
-perl_version_from 'dprofpp_grapher';
+name     'dprofpp_grapher';
+all_from 'dprofpp_grapher';
 
 ##############################################################################
 # Specific dependencies
 
-require Data::Dumper => 0;
-require English      => 0;
-require File::Slurp  => 0;
-require Getopt::Long => 0;
-require GraphViz     => 0;
-require IPC::Open3   => 0;
+requires 'Class::Inspector' => 0;
+requires 'Data::Dumper'     => 0;
+requires 'English'          => 0;
+requires 'File::Slurp'      => 0;
+requires 'Getopt::Long'     => 0;
+requires 'GraphViz'         => 0;
+requires 'IPC::Open3'       => 0;
 
 install_script  'dprofpp_grapher';
 
