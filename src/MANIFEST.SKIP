@@ -11,3 +11,5 @@
 ^dprofpp_grapher-
 ^Makefile.old$
 ^pm_to_blib$
+^.#
+^#
