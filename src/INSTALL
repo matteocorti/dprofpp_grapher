@@ -1,0 +1,7 @@
+Build and install dprofpp_grapher
+
+In this current directory run:
+
+    perl Makefile.PL
+    make
+    make install

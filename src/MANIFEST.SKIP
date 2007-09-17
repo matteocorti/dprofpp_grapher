@@ -8,3 +8,6 @@
 \.svn
 ^cover_db
 ^MANIFEST\.SKIP$
+^dprofpp_grapher-
+^Makefile.old$
+^pm_to_blib$
