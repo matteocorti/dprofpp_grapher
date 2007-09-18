@@ -12,7 +12,7 @@ use strict;
 use warnings;
 use Carp;
 
-use version; our $VERSION = '0.9.1';
+use version; our $VERSION = '0.9.2';
 
 use Class::Inspector;
 use Data::Dumper;
@@ -257,7 +257,8 @@ for my $name (keys %nodes) {
         fontsize  => 8,
         style     => 'filled',
         fontcolor => 'black',
-        fillcolor => $nodes{$name}{time_percentage}/100 . ',1.0,0.8'
+        # from H=240 (blue) to H=0 (red)
+        fillcolor => (100-$nodes{$name}{time_percentage})*(2/300).',0.5,1'
     );
 
 }
