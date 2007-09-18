@@ -12,7 +12,7 @@ use strict;
 use warnings;
 use Carp;
 
-use version; our $VERSION = '0.9.0';
+use version; our $VERSION = '0.9.1';
 
 use Class::Inspector;
 use Data::Dumper;
@@ -121,65 +121,6 @@ Options:
 
 EOT
   exit;
-}
-
-##############################################################################
-# Usage     : get_color({ value => 0.1, min => 0, max => 1 });
-# Purpose   : return a RGB colour value given a scalar 'value' in the range
-#             [vmin,vmax] In this case each colour component ranges from 0
-#             (no contribution) to 1 (fully saturated), modifications for
-#             other ranges is trivial.The colour is clipped at the end of the
-#             scales if 'value' is outside the range [vmin,vmax]
-# Returns   : a comma separated string with the RGB components of the color
-# Arguments : value : scalar value to conver
-#             min   : minum possible value for 'value'
-#             max   : maximum possible value for 'value'
-# Throws    : n/a
-# Comments  : n/a
-# See also  : http://local.wasp.uwa.edu.au/~pbourke/texture_colour/colourramp/
-sub get_color {
-
-    my ($arg_ref) = @_;
-
-    my $value = $arg_ref->{value};
-    my $v_min = $arg_ref->{min};
-    my $v_max = $arg_ref->{max};
-
-    my $red   = 1.0;
-    my $green = 1.0;
-    my $blue  = 1.0;
-
-    my $diff;
-
-    if ($value < $v_min) {
-        $value = $v_min;
-    }
-
-    if ($value > $v_max) {
-        $value = $v_max;
-    }
-
-    $diff = $v_max - $v_min;
-
-    if      ($value < ($v_min + 0.25 * $diff)) {
-        $red   = 0;
-        $green = 4 * ($value - $v_min) / $diff;
-    }
-    elsif ($value < ($v_min + 0.5 * $diff)) {
-        $red   = 0;
-        $blue  = 1 + 4 * ($v_min + 0.25 * $diff - $value) / $diff;
-    }
-    elsif ($value < ($v_min + 0.75 * $diff)) {
-        $red   = 4 * ($value - $v_min - 0.5 * $diff) / $diff;
-        $blue  = 0;
-    }
-    else {
-        $green = 1 + 4 * ($v_min + 0.75 * $diff - $value) / $diff;
-        $blue  = 0;
-    }
-
-    return $red .q{,} . $green . q{,} . $blue;
-
 }
 
 ##############################################################################
@@ -306,38 +247,17 @@ for my $line (@profiler_output) {
 
 }
 
-# compute the max time
-my $min_time = 100;
-for my $name (keys %nodes) {
-    if ($nodes{$name}{time_percentage} < $min_time) {
-        $min_time = $nodes{$name}{time_percentage};
-    }
-}
-
-verbose "  smallest node: $min_time\n", 1;
-
-my $color_limit = (100 - $min_time) / 3;
-
 for my $name (keys %nodes) {
 
     my $text_color = 'black';
-
-    if ($nodes{$name}{time_percentage} > $color_limit) {
-        # the background is too dark
-        $text_color = 'white';
-    }
-
+    
     $graph->add_node(
         $name,
         label     => $name . "\n(" . $nodes{$name}{time_percentage} . '%)',
         fontsize  => 8,
         style     => 'filled',
-        fontcolor => $text_color,
-        fillcolor => get_color({
-            value => $nodes{$name}{time_percentage}/100,
-            min   => $min_time/100,
-            max   => 1,
-        }),
+        fontcolor => 'black',
+        fillcolor => $nodes{$name}{time_percentage}/100 . ',1.0,0.8'
     );
 
 }
