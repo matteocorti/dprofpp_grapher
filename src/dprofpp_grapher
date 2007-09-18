@@ -384,7 +384,7 @@ for my $edge (keys %edges) {
 
 verbose "  $counter edges generated\n";
 
-print "Generating graph\n";
+verbose "Generating graph: ";
 
 my $DOTFILE_FH;
 
@@ -403,7 +403,7 @@ if (defined $out_file) {
         or croak "Error: unable to close test.dot: $OS_ERROR";
 }
 
-print "Done\n";
+verbose "done\n";
 
 1;
 
