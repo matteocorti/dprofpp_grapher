@@ -1,3 +1,7 @@
+2007-09-19  Linux Webserver  <corti@matteo.ethz.ch>
+
+	* INSTALL: local install instructions
+
 2007-09-18  Matteo Corti  <matteo.corti@id.ethz.ch>
 
 	* dprofpp_grapher: fixed bug #5 (fillcolor is now specified using HSV)

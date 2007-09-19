@@ -1,7 +1,22 @@
 Build and install dprofpp_grapher
 
-In this current directory run:
+Install globally (root/superuser permissions needed)
+====================================================
+
+In the src directory run:
 
     perl Makefile.PL
     make
     make install
+
+Install locally
+===============
+
+In the src directory run:
+
+    perl Makefile.PL PREFIX=${HOME}
+    make
+    make install
+
+In this case files will be installed in ${HOME}/bin, ${HOME}/lib and
+${HOME}/man
