@@ -1,10 +1,10 @@
 #!/usr/bin/env perl
 
 # RCS information (required by Perl::Critic)
-#   $Id: dprofpp_grapher 4177 2007-09-17 06:00:39Z corti $
-#   $Revision: 4177 $
-#   $HeadURL: https://svn.id.ethz.ch/nethz/tools/dprofpp_grapher/dprofpp_grapher $
-#   $Date: 2007-09-17 08:00:39 +0200 (Mon, 17 Sep 2007) $
+#   $Id$
+#   $Revision$
+#   $HeadURL$
+#   $Date$
 
 use 5.008;
 use strict;
