@@ -1,3 +1,7 @@
+2007-09-22  Matteo Corti  <matteo.corti@id.ethz.ch>
+
+	* dprofpp_grapher: added options to specify the color range (closing #6)
+
 2007-09-19  Linux Webserver  <corti@matteo.ethz.ch>
 
 	* INSTALL: local install instructions

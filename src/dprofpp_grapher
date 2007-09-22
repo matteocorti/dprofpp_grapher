@@ -4,7 +4,6 @@
 #   $Id: dprofpp_grapher 4177 2007-09-17 06:00:39Z corti $
 #   $Revision: 4177 $
 #   $HeadURL: https://svn.id.ethz.ch/nethz/tools/dprofpp_grapher/dprofpp_grapher $
-#   $Source$
 #   $Date: 2007-09-17 08:00:39 +0200 (Mon, 17 Sep 2007) $
 
 use 5.008;
@@ -46,6 +45,8 @@ my %edges;
 my @call_stack;
 
 # command line arguments and defaults
+my $max_hue   = 60; # yellow see http://en.wikipedia.org/wiki/HSV_color_space
+my $min_hue   =  0; # red    see http://en.wikipedia.org/wiki/HSV_color_space
 my $format    = 'ps';
 my $help;
 my $in_file   = 'tmon.out';
@@ -109,10 +110,15 @@ Generates a graphic representation of Perl profile data
 
 Options:
 
-    --format,-f        set the output format (see the GraphViz manpage for a list)
-    --in,-i            input file (if not specified tmon.out is read by default)
+    --min_hue          sets the minumum hue for the color nodes
+    --max_hue          sets the maximum hue for the color nodes
+    --format,-f        set the output format (see the GraphViz manpage
+                       for a list)
+    --in,-i            input file (if not specified tmon.out is read
+                       by default)
     --help,-h,-?       this help screen
-    --out,-o           output file (if not specified output is sent to standard output)
+    --out,-o           output file (if not specified output is sent to
+                       standard output)
     --threshold,-t     display only subroutins with a cumumlative time
                        percentage greater or equal to the specified
                        threshold
@@ -130,13 +136,15 @@ EOT
 # process options
 
 my $result = GetOptions(
-    'format|f=s'    => \$format,
-    'in|i=s'        => \$in_file,
-    'help|h|?'      => \$help,
-    'out|o=s'       => \$out_file,
-    'threshold|t=f' => \$threshold,
-    'verbose|v+'    => \$verbosity,
-    'version|V'     => sub { print "$PROG_NAME version $VERSION\n"; exit; }
+    'max-hue|max_hue=i' => \$max_hue,
+    'min-hue|min_hue=i' => \$min_hue,
+    'format|f=s'        => \$format,
+    'in|i=s'            => \$in_file,
+    'help|h|?'          => \$help,
+    'out|o=s'           => \$out_file,
+    'threshold|t=f'     => \$threshold,
+    'verbose|v+'        => \$verbosity,
+    'version|V'         => sub { print "$PROG_NAME version $VERSION\n"; exit; }
 );
 
 if (!$result || $help) {
@@ -154,6 +162,15 @@ if (! -f $in_file) {
 # threshold
 if ($threshold < 0 || $threshold > 100) {
     croak "Error: The threshold must be between 0 and 100\n";
+}
+
+# hue
+if ($min_hue < 0 || $min_hue > 360) {
+    croak "Error: invalid minimum hue value $min_hue\n";
+}
+
+if ($max_hue < 0 || $max_hue > 360) {
+    croak "Error: invalid maximum hue value $max_hue\n";
 }
 
 #######################
@@ -236,7 +253,7 @@ for my $line (@profiler_output) {
     if(($time_percentage ne q{}) &&
        ($time_percentage =~ /[0-9\.]/xm)) {
 
-         # we add the subroutine to the graph only if the cumulative execution
+        # we add the subroutine to the graph only if the cumulative execution
         # time is above a given threshold
 
         if ($time_percentage >= $threshold) {
@@ -249,16 +266,15 @@ for my $line (@profiler_output) {
 
 for my $name (keys %nodes) {
 
-    my $text_color = 'black';
-    
+    my $node_color = ($max_hue-($max_hue-$min_hue)*$nodes{$name}{time_percentage}/100)/360;
+
     $graph->add_node(
         $name,
         label     => $name . "\n(" . $nodes{$name}{time_percentage} . '%)',
         fontsize  => 8,
         style     => 'filled',
         fontcolor => 'black',
-        # from H=240 (blue) to H=0 (red)
-        fillcolor => (100-$nodes{$name}{time_percentage})*(2/300).',0.5,1'
+        fillcolor => $node_color.',0.5,1',
     );
 
 }
@@ -432,6 +448,10 @@ none
 
 =head1 OPTIONS
 
+    --min_hue          sets the minumum hue for the color nodes
+
+    --max_hue          sets the maximum hue for the color nodes
+
     --format,-f        set the output format (see the GraphViz manpage for a list)
 
     --in,-i            file input file (if not specified tmon.out is read by default)
@@ -453,6 +473,8 @@ none
   --verbose                 \
   --in        tmon.out      \
   --out       call_graph.ps \
+  --min-hue   0
+  --max-hue   50            \
   --format    ps
 
 =head1 DIAGNOSTICS
