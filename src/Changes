@@ -1,16 +1,24 @@
+2007-09-24  Matteo Corti  <matteo.corti@id.ethz.ch>
+
+	* dprofpp_grapher: sanity check on the output format
+
 2007-09-22  Matteo Corti  <matteo.corti@id.ethz.ch>
 
-	* dprofpp_grapher: added options to specify the color range (closing #6)
-	* dprofpp_grapher: using List::MoreUtils any instead of grep in boolean context
-
+	* dprofpp_grapher: added options to specify the color range
+                           (closing #6)
+	* dprofpp_grapher: using List::MoreUtils any instead of grep in
+	                   boolean context
+	
 2007-09-19  Linux Webserver  <corti@matteo.ethz.ch>
 
-	* INSTALL: local install instructions
+	* INSTALL:         local install instructions
 
 2007-09-18  Matteo Corti  <matteo.corti@id.ethz.ch>
 
-	* dprofpp_grapher: fixed bug #5 (fillcolor is now specified using HSV)
-	* dprofpp_grapher: fixed bug #7 (H now ranges from 240 (blue) to 0 (red)
+	* dprofpp_grapher: fixed bug #5 (fillcolor is now specified using
+                           HSV)
+	* dprofpp_grapher: fixed bug #7 (H now ranges from 240 (blue) to 0
+                           (red)
 
 2007-09-17  Matteo Corti  <matteo.corti@id.ethz.ch>
 

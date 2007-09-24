@@ -1,7 +1,1 @@
-Milestone 1
-===========
-
-* color the edges with the same principle as nodes using the number of
-  calls
-* see if it is possible to separate the traces (maybe using the ID)
-* write tests
+See https://trac.id.ethz.ch/projects/dprofpp_grapher
