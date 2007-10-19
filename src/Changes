@@ -1,3 +1,8 @@
+2007-10-19  Matteo Corti  <matteo.corti@id.ethz.ch>
+
+	* dprofpp_grapher:  changed the shebang to '#!perl' so that it is
+                            automatically patched by make
+
 2007-09-24  Matteo Corti  <matteo.corti@id.ethz.ch>
 
 	* dprofpp_grapher: sanity check on the output format
