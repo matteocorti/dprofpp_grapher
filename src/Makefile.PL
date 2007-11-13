@@ -18,6 +18,9 @@ requires 'Getopt::Long'     => 0;
 requires 'GraphViz'         => 0;
 requires 'IPC::Open3'       => 0;
 requires 'List::MoreUtils'  => 0;
+requires 'version'          => 0;
+
+include 'version';
 
 install_script  'dprofpp_grapher';
 
