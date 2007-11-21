@@ -5,7 +5,7 @@
 
 name:      dprofpp_grapher
 summary:   dprofpp_grapher -  generates a graphic representation of Perl profile data.
-version:   1.0.0
+version:   1.0.1
 release:   0
 vendor:    Matteo Corti <matteo.corti@id.ethz.ch>
 packager:  Matteo Corti <matteo.corti@id.ethz.ch>
@@ -15,7 +15,7 @@ url:       http://trac.id.ethz.ch/projects/dprofpp_grapher
 buildroot: %{_tmppath}/%{name}-%{version}-%(id -u -n)
 buildarch: noarch
 prefix:    %(echo %{_prefix})
-source:    dprofpp_grapher-1.0.0.tar.gz
+source:    dprofpp_grapher-%{version}.tar.gz
 
 %description
 dprofpp_grapher generates a graphic representation of Perl profile data.
@@ -111,5 +111,8 @@ find %{buildroot}%{_prefix}             \
 %defattr(-,root,root)
 
 %changelog
+* Wed Nov 21 2007 Matteo Corti <matteo.corti@id.ethz.ch> - 1.0.1-0
+- updated to 1.0.1, fixed the source: entry
+
 * Mon Oct 22 2007 Matteo Corti <matteo.corti@id.ethz.ch> - 0.3.0-0
 - Initial package

@@ -11,7 +11,7 @@ use strict;
 use warnings;
 use Carp;
 
-use version; our $VERSION = '1.0.0';
+use version; our $VERSION = '1.0.1';
 
 use Class::Inspector;
 use Data::Dumper;
@@ -207,7 +207,8 @@ $nodes{START}{time_percentage} = 100;
 
 verbose "reading execution times\n";
 
-my $max_routines = 2**31 - 1;
+# my $max_routines = 2**31 - 1;
+my $max_routines = 64;
 
 my ( $writer, $reader, $err );
 
@@ -244,16 +245,37 @@ if ($profile_is_garbled) {
     @profiler_output = grep { !/Exporter/xm } @profiler_output;
 }
 
+# we must adjust wrapped lines
+my $counter = 1; # the first line [0] must be complete
+
+while ($counter < @profiler_output) {
+
+    if (! ($profiler_output[$counter] =~ /^\ [0-9]/mx)) {
+
+        # this line is the continuation of the previous
+        $profiler_output[$counter] =~ s/^\ *//mx;
+        
+        chomp $profiler_output[$counter-1];
+        $profiler_output[$counter-1] = $profiler_output[$counter-1].$profiler_output[$counter];
+        
+        splice @profiler_output, $counter, 1; # delete the second line
+        
+    }
+    
+    $counter++;    
+}
+
 verbose q{  } . @profiler_output . " subroutines processed\n";
 
 verbose "parsing execution statistics\n";
 
 for my $line (@profiler_output) {
 
+    
     my ( undef, $time_percentage, $time, $cumulative_time, $called,
         $seconds_per_call, $cumulative_seconds_per_call, $name )
       = split /\s+/xm, $line;
-
+    
     if (   ( $time_percentage ne q{} )
         && ( $time_percentage =~ /[0-9\.]/xm ) )
     {
@@ -310,7 +332,7 @@ my @lines = read_file($in_file);
 # The old-style + - and - -lines are used to mark the overhead related
 # to writing to profiler-output file.
 
-my $counter = 0;
+$counter = 0;
 
 my $header = 1;
 
@@ -443,7 +465,7 @@ by dprofpp (part of the Profiler)
 
 =head1 VERSION
 
-Version 1.0.0
+Version 1.0.1
 
 =head1 USAGE
 

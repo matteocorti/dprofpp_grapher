@@ -1,1 +1,2 @@
+2007-11-21 Version 1.0.1: fixed a small bug in the processing of the output of dprofpp in case of wrapped lines
 2007-09-18 Version 0.9.1: fixed a bug in the node color specification
