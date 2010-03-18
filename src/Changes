@@ -1,3 +1,7 @@
+2010-03-18  Matteo Corti  <matteo.corti@id.ethz.ch>
+
+	* dprofpp_grapher: fixed percentages > 100%
+
 2007-11-21  Matteo Corti  <matteo.corti@id.ethz.ch>
 
 	* dprofpp_grapher: fix: wrapped dprofpp output lines are mergedb

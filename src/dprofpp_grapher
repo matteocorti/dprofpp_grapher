@@ -279,7 +279,12 @@ for my $line (@profiler_output) {
     if (   ( $time_percentage ne q{} )
         && ( $time_percentage =~ /[0-9\.]/xm ) )
     {
-
+        
+        # fix rounding (dprofpp reports percentages > 100%)
+        if ($time_percentage > 100) {
+            $time_percentage = 100;
+        }
+            
         # we add the subroutine to the graph only if the cumulative execution
         # time is above a given threshold
 
