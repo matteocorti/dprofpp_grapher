@@ -1,1 +1,3 @@
 language: perl
+
+after_failure: "cat /home/travis/.cpanm/work/*/build.log"
