@@ -1,3 +1,4 @@
 language: perl
 
+before_install: "cat /home/travis/.cpanm/work/*/build.log" 
 after_failure: "cat /home/travis/.cpanm/work/*/build.log"
