@@ -1,3 +1,6 @@
 language: perl
+perl:
+  - "5.22"
+  - "5.20"
 before_install:
     - "sudo apt-get install graphviz"
