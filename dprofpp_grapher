@@ -1,11 +1,5 @@
 #!perl
 
-# RCS information (required by Perl::Critic)
-#   $Id$
-#   $Revision$
-#   $HeadURL$
-#   $Date$
-
 use 5.008;
 use strict;
 use warnings;
@@ -18,7 +12,7 @@ use Data::Dumper;
 use English qw(-no_match_vars);
 use File::Slurp;
 use Getopt::Long;
-use GraphViz;
+use GraphViz2;
 use IPC::Open3 'open3';
 use List::MoreUtils qw(any);
 use UNIVERSAL qw(can);
