@@ -3,10 +3,15 @@
 %define NVR %{pkgname}-%{version}-%{release}
 %define maketest 1
 
+%define version     1.0.1
+%define release     0
+%define sourcename  dprofpp_grapher
+%define packagename dprofpp_grapher
+
 name:      dprofpp_grapher
 summary:   dprofpp_grapher -  generates a graphic representation of Perl profile data.
-version:   1.0.1
-release:   0
+Version:   %{version}
+release:   %{release}%{?dist}
 vendor:    Matteo Corti <matteo@corti.li>
 packager:  Matteo Corti <matteo@corti.li>
 license:   GPL
