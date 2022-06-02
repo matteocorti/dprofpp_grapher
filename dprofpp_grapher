@@ -105,7 +105,7 @@ Generates a graphic representation of Perl profile data
 
 Options:
 
-    --min_hue          sets the minumum hue for the color nodes
+    --min_hue          sets the minimum hue for the color nodes
     --max_hue          sets the maximum hue for the color nodes
     --format,-f        set the output format (see the GraphViz manpage
                        for a list)
@@ -151,7 +151,7 @@ if ( !$result || $help ) {
 
 # file
 if ( !-f $in_file ) {
-    croak "Erro: Cannot open $in_file: $!\n";
+    croak "Error: Cannot open $in_file: $!\n";
 }
 
 # threshold
@@ -197,7 +197,7 @@ $nodes{START}{time_percentage} = 100;
 # read execution times (we use dprofpp)
 
 # it seems that there is no way to tell dprofpp to print *all*
-# the rountines.
+# the routines.
 
 verbose "reading execution times\n";
 
@@ -482,7 +482,7 @@ none
 
     --help,-h,-?       this help screen
 
-    --min_hue          sets the minumum hue for the color nodes
+    --min_hue          sets the minimum hue for the color nodes
 
     --max_hue          sets the maximum hue for the color nodes
 
